@@ -110,3 +110,11 @@ def apply_gd(x, step_size=0.1):
     xnew = x - step_size * x.grad.detach()
     x.grad.data.zero_()
     return xnew
+
+def plot_sol_rkhs(f_th, data_th):
+    import matplotlib.pyplot as plt
+    x_grid = torch.linspace(torch.min(data_th), torch.max(data_th), 100).reshape(-1, 1)
+    f_val_plot = f_th(x_grid)
+    plt.plot(x_grid.detach().numpy(),
+             f_val_plot.detach().numpy().reshape(-1,1),
+             c='r')  # plot the uniform weights interpolant
