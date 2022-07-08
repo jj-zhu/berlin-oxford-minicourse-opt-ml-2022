@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.metrics import euclidean_distances
 
 class rkhsFun():
-    def __init__(self, kernelFun, gamma=None, is_torch=True, a=None, n_x = None):
+    def __init__(self, kernelFun, gamma=None, is_torch=True, a=None, x=None, n_x = None, n_dim=None):
         '''
         kernel gamma param
         # n_x, number of points for kernel functions
@@ -15,7 +15,11 @@ class rkhsFun():
         self.is_torch = is_torch
 
         if n_x is None:
-            print("dim of x n_x can't be None!")
+            print("num of samples of x can't be None!")
+            raise NotImplementedError
+
+        if n_dim is None:
+            print("dim of x n_dim can't be None!")
             raise NotImplementedError
 
         if a is None:
@@ -23,25 +27,38 @@ class rkhsFun():
         else:
             raise NotImplementedError
 
-    def eval(self, x, data):
+        if x is None:
+            raise NotImplementedError
+            # self.x = torch.rand(n_x, requires_grad=True) #coeff of kernel bases; init: uniform weights
+        else:
+            self.x = x
+
+    def eval(self, x_new):
         '''
         compute the rkhs fucntion
             f(x) = sum { a_i * k(data_i, x) }
         x: the location to evaluate, can be a vector
         data: the expansion points, empirical data
         '''
-        if len(x.shape) == 1:
-            xloc = x.reshape(-1,1)
-        elif len(x.shape) == 2:
-            xloc = x
-        else:
-            raise NotImplementedError
+        # if len(x.shape) == 1:
+        #     xloc = x.reshape(-1,1)
+        # elif len(x.shape) == 2:
+        #     xloc = x
+        # else:
+        #     raise NotImplementedError
 
-        k = self.kernelFun(data, xloc, gamma=self.kernel_gamma)
+        # in case x_new is a single sample
+        if len(x_new.squeeze().shape) < 1:
+            x_new = x_new.reshape(1, 1)
+
+        if len(x_new.squeeze().shape) < 2:
+            k = self.kernelFun(x_new, self.x.reshape(-1,1), gamma=self.kernel_gamma)
+        else:
+            k = self.kernelFun(x_new, self.x, gamma=self.kernel_gamma)
 
         if self.is_torch:
             # use torch mat multiple
-            fval = torch.mm(self.a.reshape(1,-1), torch.from_numpy(k).float())
+            fval = torch.mm(torch.from_numpy(k).float(), self.a.reshape(-1,1), )
         else:
             fval = self.a @ k # RKHS function linear combination of kernel bases
         return fval
@@ -50,8 +67,8 @@ class rkhsFun():
         # compute the norm of RKHS function
         return a @ self.kernelFun(data, data, gamma=self.kernel_gamma) @ self.a.transpose()
 
-    def __call__(self, x, data):
-        return self.eval(x, data)
+    def __call__(self, x):
+        return self.eval(x)
 
     def gd_step(self, x_th=None, y_th=None, step_size=0.001, reg_coeff = 0.1):
         # this function performs 1 step of optimization
@@ -61,10 +78,10 @@ class rkhsFun():
         # kernel: use the "kernel choice" class in this file
 
         # construct the graph (again?)
-        f_val = self.eval(x_th.reshape(-1, 1), x_th.reshape(-1, 1))
+        f_val = self.eval(x_th.reshape(-1, 1))
         f_minus_y_sqr = torch.norm(f_val - y_th) ** 2  # frobenius/2-norm sqr
 
-        K = self.kernelFun(x_th.reshape(-1, 1), x_th.reshape(-1, 1))
+        K = self.kernelFun(self.x.reshape(-1, 1), self.x.reshape(-1, 1))
         aKa = torch.mm(torch.mm(self.a.reshape(1, -1), torch.from_numpy(K).float()), self.a.reshape(-1, 1))
 
         reg_term = reg_coeff * aKa
