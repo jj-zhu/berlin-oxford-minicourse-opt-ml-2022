@@ -52,16 +52,16 @@ class rkhsFun():
             x_new = x_new.reshape(1, 1)
 
         if len(x_new.squeeze().shape) < 2:
-            k = self.kernelFun(x_new, self.x.reshape(-1,1), gamma=self.kernel_gamma)
+            K = self.kernelFun(x_new, self.x.reshape(-1,1), gamma=self.kernel_gamma)
         else:
-            k = self.kernelFun(x_new, self.x, gamma=self.kernel_gamma)
+            K = self.kernelFun(x_new, self.x, gamma=self.kernel_gamma)
 
         if self.is_torch:
             # use torch mat multiple
-            fval = torch.mm(torch.from_numpy(k).float(), self.a.reshape(-1,1), )
+            fval = torch.mm(torch.from_numpy(K).float(), self.a.reshape(-1,1), )
         else:
-            fval = self.a @ k # RKHS function linear combination of kernel bases
-        return fval
+            fval = self.a @ K # RKHS function linear combination of kernel bases
+        return fval, K # return also the kernel matrix
 
     def nor_sqr(self, data):
         # compute the norm of RKHS function
@@ -78,10 +78,9 @@ class rkhsFun():
         # kernel: use the "kernel choice" class in this file
 
         # construct the graph (again?)
-        f_val = self.eval(x_th.reshape(-1, 1))
+        f_val, K = self.eval(x_th.reshape(-1, 1)) # compute f value evaluated at all data points, math: f_val = K'a
         f_minus_y_sqr = torch.norm(f_val - y_th) ** 2  # frobenius/2-norm sqr
 
-        K = self.kernelFun(self.x.reshape(-1, 1), self.x.reshape(-1, 1))
         aKa = torch.mm(torch.mm(self.a.reshape(1, -1), torch.from_numpy(K).float()), self.a.reshape(-1, 1))
 
         reg_term = reg_coeff * aKa
