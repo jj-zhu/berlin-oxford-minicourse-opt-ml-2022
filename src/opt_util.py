@@ -65,12 +65,13 @@ class rkhsFun():
 
     def nor_sqr(self, data):
         # compute the norm of RKHS function
+        pass
         return a @ self.kernelFun(data, data, gamma=self.kernel_gamma) @ self.a.transpose()
 
     def __call__(self, x):
         return self.eval(x)
 
-    def gd_step(self, x_th=None, y_th=None, step_size=0.001, reg_coeff = 0.1):
+    def gd_step(self, x_th=None, y_th=None, step_size=0.001, reg_coeff = 0.1, opt_auto =None):
         # this function performs 1 step of optimization
         # f_th: parameterized learning model function
         # data_th: data in torch array
@@ -81,17 +82,24 @@ class rkhsFun():
         f_val, K = self.eval(x_th.reshape(-1, 1)) # compute f value evaluated at all data points, math: f_val = K'a
         f_minus_y_sqr = torch.norm(f_val - y_th) ** 2  # frobenius/2-norm sqr
 
-        aKa = torch.mm(torch.mm(self.a.reshape(1, -1), torch.from_numpy(K).float()), self.a.reshape(-1, 1))
+        # aKa = torch.mm(torch.mm(self.a.reshape(1, -1), torch.from_numpy(K).float()), self.a.reshape(-1, 1))
 
-        reg_term = reg_coeff * aKa
-        obj_krr = f_minus_y_sqr + reg_term
-
-        # back prop
-        obj_krr.backward()  # compute grad
+        # reg_term = reg_coeff * aKa
+        # obj_krr = f_minus_y_sqr + reg_term
+        # obj_krr = f_minus_y_sqr # no regularization
+        loss = torch.nn.MSELoss()
+        obj_krr = loss(f_val.squeeze().float(), y_th)
 
         # gradient step
-        self.a.data = self.a.data - step_size * self.a.grad.detach()  # gradient step
-        self.a.grad.zero_()  # zero gradient
+        if opt_auto is None:
+            self.a.grad.zero_()  # zero gradient
+            obj_krr.backward()  # compute grad
+            self.a.data = self.a.data - step_size * self.a.grad.detach()  # gradient step
+            self.a.grad.zero_()  # zero gradient
+        else: # simple optimization for pth: https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html
+            opt_auto.zero_grad()
+            obj_krr.backward()  # compute grad
+            opt_auto.step()
 
 class kernel_choice():
     '''
@@ -105,6 +113,7 @@ class kernel_choice():
         return self.k(x,y, gamma=self.param)
 
 # pytorch GD
+# not used yet
 def apply_gd(x, step_size=0.1):
     xnew = x - step_size * x.grad.detach()
     x.grad.data.zero_()
@@ -113,7 +122,7 @@ def apply_gd(x, step_size=0.1):
 def plot_sol_rkhs(f_th, data_th):
     import matplotlib.pyplot as plt
     x_grid = torch.linspace(torch.min(data_th), torch.max(data_th), 100).reshape(-1, 1)
-    f_val_plot = f_th(x_grid)
+    f_val_plot, _  = f_th(x_grid)
     plt.plot(x_grid.detach().numpy(),
              f_val_plot.detach().numpy().reshape(-1,1),
              c='r')  # plot the uniform weights interpolant
