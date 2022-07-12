@@ -1,8 +1,55 @@
-import cvxpy as cp
 import numpy as np
-import torch
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.metrics import euclidean_distances
+
+import torch
+import torch.nn as nn
+
+class ml_model():
+    def __init__(self, model_class = 'nn', n_dim=None, loss = None):
+        '''
+        kernel gamma param
+        # n_x, number of points for kernel functions
+        '''
+
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        if loss is None: # must choose torch loss class
+            raise NotImplementedError
+        else:
+            self.loss = loss
+
+        if n_dim is None:
+            print("dim of x n_dim can't be None!")
+            raise NotImplementedError
+        self.n_dim = n_dim
+
+        if model_class=='nn':
+            n_hidden = 64
+            self.model = nn.Sequential(nn.Linear(n_dim, n_hidden), nn.ReLU(), nn.Linear(n_hidden, n_hidden), nn.ReLU(), nn.Linear(n_hidden, 1)).to(device)
+            self.parameters = self.model.parameters()
+        else:
+            raise NotImplementedError
+
+    def __call__(self, x):
+        return self.model(x)
+
+    def train_step(self, x_th=None, y_th=None, optimization =None):
+        # this function performs 1 step of optimization
+        # f_th: parameterized learning model function
+        # data_th: data in torch array
+
+        # construct the graph (again?)
+        f_val = self.model(x_th.reshape(-1, 1)) # compute f value evaluated at all data points, math: f_val = K'a
+        obj = self.loss(f_val , y_th)
+
+        # gradient step
+        if optimization is None:
+            raise NotImplementedError
+        else: # simple optimization for pth: https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html
+            optimization.zero_grad()
+            obj.backward()  # compute grad
+            optimization.step()
 
 class rkhsFun():
     def __init__(self, kernelFun, gamma=None, is_torch=True, a=None, x=None, n_x = None, n_dim=None):
@@ -122,7 +169,7 @@ def apply_gd(x, step_size=0.1):
 def plot_sol_rkhs(f_th, data_th):
     import matplotlib.pyplot as plt
     x_grid = torch.linspace(torch.min(data_th), torch.max(data_th), 100).reshape(-1, 1)
-    f_val_plot, _  = f_th(x_grid)
+    f_val_plot  = f_th(x_grid)
     plt.plot(x_grid.detach().numpy(),
              f_val_plot.detach().numpy().reshape(-1,1),
              c='r')  # plot the uniform weights interpolant
