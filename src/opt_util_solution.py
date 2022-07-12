@@ -4,6 +4,8 @@ import torch.nn as nn
 
 class ml_model():
     def __init__(self, model_class = 'nn', dim_x=None, loss = None):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         if loss is None: # must choose torch loss class
             raise NotImplementedError
         else:
@@ -16,8 +18,11 @@ class ml_model():
 
         self.model_class = model_class
         if self.model_class=='nn':
-            self.model = #todo: make your fav. NN model here
-
+            n_hidden = 50
+            self.model = nn.Sequential(nn.Linear(dim_x, n_hidden), nn.ReLU(),
+                                       nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+                                       nn.Linear(n_hidden, n_hidden), nn.ReLU(),
+                                       nn.Linear(n_hidden, 1)).to(device)
         elif self.model_class=='rf':
             n_feat = 200
             self.rbf_feature = RBFSampler(gamma=5.0, n_components=n_feat,
@@ -41,8 +46,9 @@ class ml_model():
 
     def train_step(self, x_th=None, y_th=None, optimization =None):
         # this function performs 1 step of optimization
-        # construct the graph by constructing the loss and then perform gradient descent in pytorch
-        obj = # todo: what should the objective of the optimization problem?
+        # construct the graph
+        f_val = self.__call__(x_th.reshape(-1, 1)) # compute f value evaluated at all data points, math: f_val = K'a
+        obj = self.loss(f_val, y_th)
 
         # gradient step
         if optimization is None:
@@ -50,7 +56,7 @@ class ml_model():
         else: # simple optimization for pth: https://pytorch.org/tutorials/beginner/basics/optimization_tutorial.html
             optimization.zero_grad()
             obj.backward()  # compute grad
-            # todo: perform gradient step using the method provided by pytorch
+            optimization.step()
 
 class Flatten(nn.Module):
     def forward(self, x):
