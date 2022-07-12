@@ -37,7 +37,7 @@ if __name__ == '__main__':
         f_th.gd_step(x_th=data_th, y_th=target_th, step_size=0.05, reg_coeff=0.05)
         if iter_gd % 10 == 0:
             plt.figure()
-            plot_sol_rkhs(f_th, data_th)
+            plot_fitting(f_th, data_th)
             plt.scatter(x=data_th, y=target_th)
             plt.title("itertion:" + str(iter_gd))
             plt.show()
