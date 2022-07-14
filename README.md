@@ -1,1 +1,2 @@
-The DRO part of the exercise is in https://github.com/yasnem/CC_Tutorial_TUB_Oxford
+- The DRO part of the exercise is in https://github.com/yasnem/CC_Tutorial_TUB_Oxford
+- Optimal control part is in https://github.com/Xapavlov/mpc_tutorial
